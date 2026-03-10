@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StickerX — صانع الملصقات</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="_shared/style.css">
+<style>
+.img-drop {
+  border:2px dashed var(--border); border-radius:var(--radius);
+  padding:28px 16px; text-align:center; cursor:pointer; transition:all .2s;
+}
+.img-drop:hover,.img-drop.over{border-color:var(--accent);background:rgba(10,132,255,.06)}
+.preview-canvas-wrap {
+  display:none; margin-top:12px; text-align:center;
+  position:relative;
+}
+.preview-canvas-wrap.show{display:block}
+canvas#previewCanvas {
+  max-width:100%; border-radius:var(--radius-sm);
+  border:1.5px solid var(--border);
+  background:repeating-conic-gradient(#3a3a3c 0% 25%,#2c2c2e 0% 50%) 0 0/20px 20px;
+}
+.sticker-opts { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-icon">🖼️</div>
+  <div>
+    <div class="app-title">StickerX</div>
+    <div class="app-sub">حوّل أي صورة إلى ملصق تيليجرام</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">الصورة</div>
+  <div class="img-drop" id="imgDrop" onclick="document.getElementById('imgInp').click()">
+    <div style="font-size:2.5rem">🖼️</div>
+    <div>اسحب صورة أو اضغط للاختيار</div>
+    <div class="drop-text mt8">PNG • JPG • WEBP</div>
+  </div>
+  <input type="file" id="imgInp" accept="image/*" style="display:none" onchange="onImg(this)">
+</div>
+
+<div class="preview-canvas-wrap" id="prevWrap">
+  <div class="card-label" style="text-align:right;margin-bottom:8px">معاينة (بدون خلفية)</div>
+  <canvas id="previewCanvas" width="300" height="300"></canvas>
+  <div class="sticker-opts">
+    <span class="chip active" onclick="setBg(this,'transparent')">✨ شفاف</span>
+    <span class="chip" onclick="setBg(this,'white')">⬜ أبيض</span>
+    <span class="chip" onclick="setBg(this,'black')">⬛ أسود</span>
+    <span class="chip" onclick="setBg(this,'gradient')">🌈 تدرج</span>
+  </div>
+</div>
+
+<button class="btn btn-primary" id="sendBtn" style="display:none" onclick="doSend()">
+  📤 إرسال الملصق للبوت
+</button>
+<div class="spinner" id="spin"></div>
+<div class="result" id="result"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+
+let bgMode = "transparent";
+let imgLoaded = null;
+
+function onImg(inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      imgLoaded = img;
+      drawPreview();
+      document.getElementById("prevWrap").classList.add("show");
+      document.getElementById("sendBtn").style.display = "flex";
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function setBg(el, mode) {
+  document.querySelectorAll(".sticker-opts .chip").forEach(c=>c.classList.remove("active"));
+  el.classList.add("active");
+  bgMode = mode;
+  drawPreview();
+}
+
+function drawPreview() {
+  if (!imgLoaded) return;
+  const cv = document.getElementById("previewCanvas");
+  const ctx = cv.getContext("2d");
+  const sz = 300;
+  cv.width = cv.height = sz;
+  ctx.clearRect(0,0,sz,sz);
+
+  if (bgMode === "white") { ctx.fillStyle="#fff"; ctx.fillRect(0,0,sz,sz); }
+  else if (bgMode === "black") { ctx.fillStyle="#000"; ctx.fillRect(0,0,sz,sz); }
+  else if (bgMode === "gradient") {
+    const g = ctx.createLinearGradient(0,0,sz,sz);
+    g.addColorStop(0,"#667eea"); g.addColorStop(1,"#764ba2");
+    ctx.fillStyle=g; ctx.fillRect(0,0,sz,sz);
+  }
+
+  // Draw image centered/cropped
+  const r = Math.min(sz/imgLoaded.width, sz/imgLoaded.height);
+  const w = imgLoaded.width*r, h = imgLoaded.height*r;
+  ctx.drawImage(imgLoaded, (sz-w)/2, (sz-h)/2, w, h);
+}
+
+function doSend() {
+  document.getElementById("spin").classList.add("show");
+  document.getElementById("sendBtn").disabled = true;
+  tg.sendData(JSON.stringify({action:"sticker", bg:bgMode}));
+  setTimeout(() => {
+    document.getElementById("spin").classList.remove("show");
+    const r = document.getElementById("result");
+    r.textContent = "✅ أرسل الصورة في المحادثة والبوت سيحولها لملصق!";
+    r.className = "result show";
+    document.getElementById("sendBtn").disabled = false;
+    setTimeout(() => tg.close(), 2200);
+  }, 1000);
+}
+
+// Drag
+const dz = document.getElementById("imgDrop");
+dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("over")});
+dz.addEventListener("dragleave",()=>dz.classList.remove("over"));
+dz.addEventListener("drop",e=>{
+  e.preventDefault();dz.classList.remove("over");
+  const f=e.dataTransfer.files[0];
+  if(f){document.getElementById("imgInp").files=e.dataTransfer.files;onImg(document.getElementById("imgInp"))}
+});
+</script>
+</body>
+</html>

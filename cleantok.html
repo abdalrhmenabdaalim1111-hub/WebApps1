@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CleanTok — تيك توك بلا علامة</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="_shared/style.css">
+<style>
+.tip-card { background:rgba(10,132,255,.1); border:1.5px solid rgba(10,132,255,.3);
+            border-radius:var(--radius-sm); padding:12px; margin-top:10px; font-size:.82rem; }
+.paste-btn {
+  background:rgba(255,255,255,.07); border:1.5px solid var(--border);
+  border-radius:var(--radius-sm); padding:10px 16px; color:var(--text);
+  font-size:.85rem; cursor:pointer; display:flex; align-items:center; gap:6px;
+  margin-top:8px; width:100%; justify-content:center;
+}
+.paste-btn:hover { border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-icon">📱</div>
+  <div>
+    <div class="app-title">CleanTok</div>
+    <div class="app-sub">تيك توك بدون علامة مائية</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">رابط الفيديو</div>
+  <input type="url" id="urlInput" placeholder="https://www.tiktok.com/@user/video/..." dir="ltr">
+  <button class="paste-btn" onclick="pasteUrl()">📋 لصق من الحافظة</button>
+  <div class="tip-card">
+    💡 افتح تيك توك → اضغط على الفيديو → مشاركة → نسخ الرابط → الصقه هنا
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">خيارات التحميل</div>
+  <div class="chips">
+    <span class="chip active" data-opt="video" onclick="setOpt(this)">🎬 فيديو HD</span>
+    <span class="chip" data-opt="audio" onclick="setOpt(this)">🎵 صوت فقط</span>
+    <span class="chip" data-opt="cover" onclick="setOpt(this)">🖼 الصورة المصغرة</span>
+  </div>
+</div>
+
+<button class="btn btn-primary" id="dlBtn" onclick="doDownload()">
+  ⬇️ تحميل بدون علامة
+</button>
+<div class="spinner" id="spin"></div>
+<div class="progress-wrap" id="prog">
+  <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+  <div class="progress-label" id="progLabel">جاري المعالجة...</div>
+</div>
+<div class="result" id="result"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+
+let dlOpt = "video";
+
+function setOpt(el) {
+  document.querySelectorAll(".chips .chip").forEach(c=>c.classList.remove("active"));
+  el.classList.add("active");
+  dlOpt = el.dataset.opt;
+}
+
+async function pasteUrl() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text.includes("tiktok.com") || text.includes("vm.tiktok")) {
+      document.getElementById("urlInput").value = text;
+    }
+  } catch(e) {
+    // Clipboard permission needed
+  }
+}
+
+function doDownload() {
+  const url = document.getElementById("urlInput").value.trim();
+  if (!url) { showResult("⚠️ أدخل رابط تيك توك أولاً", true); return; }
+  if (!url.includes("tiktok") && !url.includes("vm.tiktok") && !url.includes("douyin")) {
+    showResult("⚠️ هذا ليس رابط تيك توك صحيح", true); return;
+  }
+
+  document.getElementById("dlBtn").disabled = true;
+  document.getElementById("spin").classList.add("show");
+  document.getElementById("prog").classList.add("show");
+
+  let p = 0;
+  const fill = document.getElementById("progFill");
+  const label = document.getElementById("progLabel");
+  const timer = setInterval(() => {
+    p = Math.min(p + Math.random()*15, 88);
+    fill.style.width = p + "%";
+    label.textContent = p<40 ? "جاري تحليل الفيديو..." : "جاري إزالة العلامة المائية...";
+  }, 350);
+
+  tg.sendData(JSON.stringify({action:"cleantok", url, opt:dlOpt}));
+
+  setTimeout(() => {
+    clearInterval(timer);
+    fill.style.width = "100%";
+    label.textContent = "✅ جاري الإرسال...";
+    document.getElementById("spin").classList.remove("show");
+    document.getElementById("dlBtn").disabled = false;
+    setTimeout(() => tg.close(), 1500);
+  }, 2200);
+}
+
+function showResult(msg, err=false) {
+  const r = document.getElementById("result");
+  r.textContent = msg;
+  r.className = "result show" + (err?" error":"");
+}
+</script>
+</body>
+</html>

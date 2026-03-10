@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TransBot — الترجمة الفورية</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="_shared/style.css">
+<style>
+.lang-selector {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 7px;
+  margin-top: 8px;
+}
+.lang-btn {
+  padding: 9px 4px;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+.lang-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color:#fff;
+}
+.swap-btn {
+  background: none; border:none; color:var(--accent);
+  font-size:1.4rem; cursor:pointer; padding:8px;
+  display:block; margin:8px auto;
+}
+.result-text {
+  min-height:80px;
+  background:rgba(255,255,255,.05);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:12px; color:var(--text);
+  font-size:.95rem; line-height:1.6;
+  user-select:all;
+}
+.copy-bar {
+  display:flex; justify-content:flex-end; margin-top:6px;
+}
+.copy-btn {
+  background:none; border:none; color:var(--accent);
+  font-size:.82rem; cursor:pointer; padding:4px 8px;
+}
+.char-count { color:var(--text-dim); font-size:.75rem; text-align:left; margin-top:4px; }
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-icon">🌍</div>
+  <div>
+    <div class="app-title">TransBot</div>
+    <div class="app-sub">ترجمة فورية لأي لغة</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">النص المراد ترجمته</div>
+  <textarea id="srcText" placeholder="اكتب أو الصق النص هنا..." oninput="updateCount()"></textarea>
+  <div class="char-count" id="charCount">0 حرف</div>
+</div>
+
+<div class="card">
+  <div class="card-label">من</div>
+  <div class="lang-selector" id="fromLangs">
+    <div class="lang-btn active" data-lang="auto" onclick="setFrom(this)">🔍 تلقائي</div>
+    <div class="lang-btn" data-lang="ar" onclick="setFrom(this)">🇸🇦 عربي</div>
+    <div class="lang-btn" data-lang="en" onclick="setFrom(this)">🇺🇸 إنجل</div>
+    <div class="lang-btn" data-lang="fr" onclick="setFrom(this)">🇫🇷 فرنسي</div>
+    <div class="lang-btn" data-lang="tr" onclick="setFrom(this)">🇹🇷 تركي</div>
+    <div class="lang-btn" data-lang="de" onclick="setFrom(this)">🇩🇪 ألماني</div>
+    <div class="lang-btn" data-lang="es" onclick="setFrom(this)">🇪🇸 إسباني</div>
+    <div class="lang-btn" data-lang="zh" onclick="setFrom(this)">🇨🇳 صيني</div>
+  </div>
+
+  <button class="swap-btn" onclick="swapLangs()" title="تبديل">⇅</button>
+
+  <div class="card-label">إلى</div>
+  <div class="lang-selector" id="toLangs">
+    <div class="lang-btn" data-lang="ar" onclick="setTo(this)">🇸🇦 عربي</div>
+    <div class="lang-btn active" data-lang="en" onclick="setTo(this)">🇺🇸 إنجل</div>
+    <div class="lang-btn" data-lang="fr" onclick="setTo(this)">🇫🇷 فرنسي</div>
+    <div class="lang-btn" data-lang="tr" onclick="setTo(this)">🇹🇷 تركي</div>
+    <div class="lang-btn" data-lang="de" onclick="setTo(this)">🇩🇪 ألماني</div>
+    <div class="lang-btn" data-lang="es" onclick="setTo(this)">🇪🇸 إسباني</div>
+    <div class="lang-btn" data-lang="ru" onclick="setTo(this)">🇷🇺 روسي</div>
+    <div class="lang-btn" data-lang="zh" onclick="setTo(this)">🇨🇳 صيني</div>
+  </div>
+</div>
+
+<button class="btn btn-primary" id="transBtn" onclick="doTranslate()">
+  🌍 ترجمة الآن
+</button>
+<div class="spinner" id="spin"></div>
+
+<div id="resultCard" style="display:none">
+  <div class="card mt12">
+    <div class="card-label">النتيجة</div>
+    <div class="result-text" id="resultText"></div>
+    <div class="copy-bar">
+      <button class="copy-btn" onclick="copyResult()">📋 نسخ</button>
+      <button class="copy-btn" onclick="sendResult()">📤 إرسال للبوت</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+
+let fromLang = "auto", toLang = "en";
+
+function updateCount() {
+  const len = document.getElementById("srcText").value.length;
+  document.getElementById("charCount").textContent = len + " حرف";
+}
+
+function setFrom(el) {
+  document.querySelectorAll("#fromLangs .lang-btn").forEach(b=>b.classList.remove("active"));
+  el.classList.add("active");
+  fromLang = el.dataset.lang;
+}
+
+function setTo(el) {
+  document.querySelectorAll("#toLangs .lang-btn").forEach(b=>b.classList.remove("active"));
+  el.classList.add("active");
+  toLang = el.dataset.lang;
+}
+
+function swapLangs() {
+  if (fromLang === "auto") return;
+  const tmp = fromLang; fromLang = toLang; toLang = tmp;
+  document.querySelectorAll("#fromLangs .lang-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.lang === fromLang);
+  });
+  document.querySelectorAll("#toLangs .lang-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.lang === toLang);
+  });
+}
+
+function doTranslate() {
+  const text = document.getElementById("srcText").value.trim();
+  if (!text) return;
+  document.getElementById("spin").classList.add("show");
+  document.getElementById("transBtn").disabled = true;
+  document.getElementById("resultCard").style.display = "none";
+  tg.sendData(JSON.stringify({action:"translate", text, from:fromLang, to:toLang}));
+  // In a real WebApp, the bot would respond via mainButton or external API
+  // For now, send and let bot process
+  setTimeout(() => {
+    document.getElementById("spin").classList.remove("show");
+    document.getElementById("transBtn").disabled = false;
+    document.getElementById("resultText").textContent = "⏳ جاري الترجمة في البوت...";
+    document.getElementById("resultCard").style.display = "block";
+    setTimeout(() => tg.close(), 1800);
+  }, 1200);
+}
+
+function copyResult() {
+  const text = document.getElementById("resultText").textContent;
+  navigator.clipboard.writeText(text).catch(()=>{});
+}
+
+function sendResult() {
+  const text = document.getElementById("resultText").textContent;
+  tg.sendData(JSON.stringify({action:"send_translation", text}));
+  tg.close();
+}
+</script>
+</body>
+</html>

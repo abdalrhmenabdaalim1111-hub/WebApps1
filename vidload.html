@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VidLoad — تحميل الفيديوهات</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="_shared/style.css">
+<style>
+.site-chips { gap:6px; margin-top:8px; }
+.site-chip { font-size:.75rem; padding:5px 10px; }
+.format-row { display:flex; gap:8px; margin-top:8px; }
+.format-btn {
+  flex:1; padding:10px; border-radius:var(--radius-sm);
+  background:rgba(255,255,255,.07); border:1.5px solid var(--border);
+  color:var(--text); font-size:.85rem; font-weight:600; cursor:pointer;
+  text-align:center; transition:all .15s;
+}
+.format-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.thumb { width:100%; border-radius:var(--radius-sm); margin-top:10px; display:none; }
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-icon">🎬</div>
+  <div>
+    <div class="app-title">VidLoad</div>
+    <div class="app-sub">تحميل الفيديوهات من أي موقع</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">رابط الفيديو</div>
+  <input type="url" id="urlInput" placeholder="https://youtube.com/watch?v=..." dir="ltr">
+  <div class="chips site-chips" id="siteChips">
+    <span class="chip site-chip active">يوتيوب</span>
+    <span class="chip site-chip">تيك توك</span>
+    <span class="chip site-chip">إنستجرام</span>
+    <span class="chip site-chip">فيسبوك</span>
+    <span class="chip site-chip">تويتر/X</span>
+  </div>
+  <img id="thumbImg" class="thumb" alt="preview">
+</div>
+
+<div class="card">
+  <div class="card-label">نوع التحميل</div>
+  <div class="format-row">
+    <div class="format-btn active" data-type="video" onclick="setType(this)">🎬 فيديو</div>
+    <div class="format-btn" data-type="audio" onclick="setType(this)">🎵 صوت MP3</div>
+  </div>
+</div>
+
+<button class="btn btn-primary" id="dlBtn" onclick="doDownload()">
+  ⬇️ تحميل الآن
+</button>
+<div class="spinner" id="spin"></div>
+<div class="progress-wrap" id="prog">
+  <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+  <div class="progress-label" id="progLabel">جاري التحميل...</div>
+</div>
+<div class="result" id="result"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+tg.MainButton.setParams({text:"⬇️ تحميل", color:"#0a84ff"});
+
+let selectedType = "video";
+
+function setType(el) {
+  document.querySelectorAll(".format-btn").forEach(b => b.classList.remove("active"));
+  el.classList.add("active");
+  selectedType = el.dataset.type;
+}
+
+// Preview on URL paste
+let previewTimer;
+document.getElementById("urlInput").addEventListener("input", e => {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => fetchPreview(e.target.value), 800);
+});
+
+function fetchPreview(url) {
+  if (!url.includes("youtu")) return;
+  const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (match) {
+    const img = document.getElementById("thumbImg");
+    img.src = `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+    img.style.display = "block";
+  }
+}
+
+function doDownload() {
+  const url = document.getElementById("urlInput").value.trim();
+  if (!url) { showResult("⚠️ أدخل رابط أولاً", true); return; }
+  
+  document.getElementById("dlBtn").disabled = true;
+  document.getElementById("spin").classList.add("show");
+  document.getElementById("result").classList.remove("show");
+  
+  // Animate progress
+  let p = 0;
+  const fill = document.getElementById("progFill");
+  const label = document.getElementById("progLabel");
+  document.getElementById("prog").classList.add("show");
+  
+  const timer = setInterval(() => {
+    p = Math.min(p + Math.random()*12, 85);
+    fill.style.width = p + "%";
+    label.textContent = p < 30 ? "جاري تحليل الرابط..." :
+                        p < 60 ? "جاري التحميل..." : "جاري المعالجة...";
+  }, 400);
+  
+  // Send to bot
+  tg.sendData(JSON.stringify({ action:"download", url, type:selectedType }));
+  
+  // Bot will close webapp and process
+  setTimeout(() => {
+    clearInterval(timer);
+    fill.style.width = "100%";
+    label.textContent = "✅ تم إرسال الطلب للبوت!";
+    document.getElementById("spin").classList.remove("show");
+    document.getElementById("dlBtn").disabled = false;
+    setTimeout(() => tg.close(), 1200);
+  }, 2000);
+}
+
+function showResult(msg, err=false) {
+  const r = document.getElementById("result");
+  r.textContent = msg;
+  r.className = "result show" + (err ? " error":"");
+}
+</script>
+</body>
+</html>

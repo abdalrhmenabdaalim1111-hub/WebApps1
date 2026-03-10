@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QRGen — صانع QR Code</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="_shared/style.css">
+<style>
+.qr-preview {
+  background:#fff;
+  border-radius:var(--radius);
+  padding:20px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin-top:14px;
+  min-height:220px;
+  transition: all .3s;
+}
+.qr-placeholder {
+  color:#999;
+  font-size:.9rem;
+  text-align:center;
+}
+.qr-size-row { display:flex; gap:8px; margin-top:8px; }
+.color-row { display:flex; gap:10px; align-items:center; margin-top:10px; }
+.color-btn { width:32px;height:32px; border-radius:50%; border:3px solid transparent; cursor:pointer; }
+.color-btn.active { border-color:var(--accent); }
+.share-row { display:flex; gap:8px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-icon">📊</div>
+  <div>
+    <div class="app-title">QRGen</div>
+    <div class="app-sub">حوّل أي نص أو رابط إلى QR Code</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">المحتوى</div>
+  <div class="chips" id="typeChips">
+    <span class="chip active" onclick="setQrType(this,'text')">📝 نص</span>
+    <span class="chip" onclick="setQrType(this,'url')">🔗 رابط</span>
+    <span class="chip" onclick="setQrType(this,'tel')">📞 هاتف</span>
+    <span class="chip" onclick="setQrType(this,'wifi')">📶 WiFi</span>
+  </div>
+  <input type="text" id="qrInput" placeholder="اكتب النص أو الرابط..." style="margin-top:10px"
+         oninput="updatePreview()">
+  
+  <!-- WiFi fields -->
+  <div id="wifiFields" style="display:none;margin-top:8px">
+    <input type="text" id="wifiSSID" placeholder="اسم الشبكة (SSID)" style="margin-bottom:6px" oninput="updatePreview()">
+    <input type="text" id="wifiPass" placeholder="كلمة المرور" oninput="updatePreview()">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">اللون</div>
+  <div class="color-row">
+    <div class="color-btn active" style="background:#000" onclick="setColor(this,'#000')"></div>
+    <div class="color-btn" style="background:#0a84ff" onclick="setColor(this,'#0a84ff')"></div>
+    <div class="color-btn" style="background:#32d74b" onclick="setColor(this,'#32d74b')"></div>
+    <div class="color-btn" style="background:#ff453a" onclick="setColor(this,'#ff453a')"></div>
+    <div class="color-btn" style="background:#5e5ce6" onclick="setColor(this,'#5e5ce6')"></div>
+    <div class="color-btn" style="background:#ff9f0a" onclick="setColor(this,'#ff9f0a')"></div>
+  </div>
+</div>
+
+<div class="qr-preview" id="qrContainer">
+  <div class="qr-placeholder">💡 اكتب نصاً لتظهر المعاينة</div>
+</div>
+
+<div class="share-row">
+  <button class="btn btn-primary" onclick="doGenerate()" style="flex:1">
+    📤 إرسال QR للبوت
+  </button>
+  <button class="btn btn-neutral" onclick="downloadQR()" style="flex:1; margin-top:6px">
+    💾 حفظ صورة
+  </button>
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+
+let qrType = "text";
+let qrColor = "#000";
+let qrInstance = null;
+
+function setQrType(el, type) {
+  document.querySelectorAll("#typeChips .chip").forEach(c=>c.classList.remove("active"));
+  el.classList.add("active");
+  qrType = type;
+  document.getElementById("wifiFields").style.display = type==="wifi"?"block":"none";
+  const inp = document.getElementById("qrInput");
+  inp.placeholder = type==="url" ? "https://example.com" :
+                    type==="tel" ? "+201234567890" :
+                    type==="wifi"? "(يُعبأ تلقائياً من الحقول أعلاه)" :
+                    "اكتب النص أو الرابط...";
+  updatePreview();
+}
+
+function setColor(el, color) {
+  document.querySelectorAll(".color-btn").forEach(b=>b.classList.remove("active"));
+  el.classList.add("active");
+  qrColor = color;
+  updatePreview();
+}
+
+function buildContent() {
+  const val = document.getElementById("qrInput").value.trim();
+  if (qrType==="tel") return val ? `tel:${val}` : "";
+  if (qrType==="wifi") {
+    const ssid = document.getElementById("wifiSSID").value.trim();
+    const pass  = document.getElementById("wifiPass").value.trim();
+    return ssid ? `WIFI:S:${ssid};T:WPA;P:${pass};;` : "";
+  }
+  return val;
+}
+
+function updatePreview() {
+  const content = buildContent();
+  const cont = document.getElementById("qrContainer");
+  if (!content) {
+    cont.innerHTML = '<div class="qr-placeholder">💡 اكتب نصاً لتظهر المعاينة</div>';
+    qrInstance = null; return;
+  }
+  cont.innerHTML = "";
+  qrInstance = new QRCode(cont, {
+    text: content, width:200, height:200,
+    colorDark: qrColor, colorLight:"#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+function doGenerate() {
+  const content = buildContent();
+  if (!content) { return; }
+  tg.sendData(JSON.stringify({action:"qrgen", content, color:qrColor, type:qrType}));
+  tg.close();
+}
+
+function downloadQR() {
+  const canvas = document.querySelector("#qrContainer canvas");
+  if (!canvas) return;
+  const a = document.createElement("a");
+  a.download = "qrcode.png";
+  a.href = canvas.toDataURL();
+  a.click();
+}
+</script>
+</body>
+</html>

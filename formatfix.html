@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FormatFix — محوّل الملفات</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="_shared/style.css">
+<style>
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: 8px;
+}
+.drop-zone.over, .drop-zone:hover { border-color:var(--accent); background:rgba(10,132,255,.06); }
+.drop-icon { font-size:2.5rem; margin-bottom:8px; }
+.drop-text { color:var(--text-dim); font-size:.88rem; }
+.file-preview {
+  display:none;
+  align-items:center;
+  gap:12px;
+  background:rgba(255,255,255,.06);
+  border-radius:var(--radius-sm);
+  padding:12px;
+  margin-top:10px;
+}
+.file-preview.show { display:flex; }
+.file-icon { font-size:2rem; }
+.file-info { flex:1; }
+.file-name { font-weight:600; font-size:.88rem; }
+.file-size { color:var(--text-dim); font-size:.78rem; }
+.fmt-grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap:8px;
+  margin-top:8px;
+}
+.fmt-btn {
+  padding:12px; border-radius:var(--radius-sm);
+  background:rgba(255,255,255,.06); border:1.5px solid var(--border);
+  color:var(--text); font-size:.88rem; font-weight:600;
+  cursor:pointer; text-align:center; transition:all .15s;
+}
+.fmt-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-icon">🔄</div>
+  <div>
+    <div class="app-title">FormatFix</div>
+    <div class="app-sub">تحويل الملفات والصور بين الصيغ</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">الملف المراد تحويله</div>
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-icon">📄</div>
+    <div>اسحب الملف هنا أو اضغط للاختيار</div>
+    <div class="drop-text mt8">PDF • JPG • PNG • WEBP</div>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp"
+         style="display:none" onchange="onFileChosen(this)">
+  <div class="file-preview" id="filePreview">
+    <div class="file-icon" id="fileEmoji">📎</div>
+    <div class="file-info">
+      <div class="file-name" id="fileName">—</div>
+      <div class="file-size" id="fileSize">—</div>
+    </div>
+    <button onclick="clearFile()" style="background:none;border:none;color:var(--danger);font-size:1.2rem;cursor:pointer">✕</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">تحويل إلى</div>
+  <div class="fmt-grid">
+    <div class="fmt-btn active" data-fmt="pdf" onclick="setFmt(this)">📕 PDF</div>
+    <div class="fmt-btn" data-fmt="jpg" onclick="setFmt(this)">🖼 JPG</div>
+    <div class="fmt-btn" data-fmt="png" onclick="setFmt(this)">🖼 PNG</div>
+    <div class="fmt-btn" data-fmt="webp" onclick="setFmt(this)">🌐 WEBP</div>
+  </div>
+</div>
+
+<button class="btn btn-primary" id="convertBtn" onclick="doConvert()">
+  🔄 تحويل الآن
+</button>
+<div class="spinner" id="spin"></div>
+<div class="result" id="result"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+
+let targetFmt = "pdf";
+let chosenFile = null;
+
+const EXT_EMOJI = {pdf:"📕", jpg:"🖼️", jpeg:"🖼️", png:"🖼️", webp:"🌐"};
+
+function setFmt(el) {
+  document.querySelectorAll(".fmt-btn").forEach(b=>b.classList.remove("active"));
+  el.classList.add("active");
+  targetFmt = el.dataset.fmt;
+}
+
+function onFileChosen(inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  chosenFile = file;
+  const ext = file.name.split(".").pop().toLowerCase();
+  document.getElementById("fileEmoji").textContent = EXT_EMOJI[ext] || "📎";
+  document.getElementById("fileName").textContent = file.name;
+  document.getElementById("fileSize").textContent = formatSize(file.size);
+  document.getElementById("filePreview").classList.add("show");
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + " KB";
+  return (bytes/1048576).toFixed(1) + " MB";
+}
+
+function clearFile() {
+  chosenFile = null;
+  document.getElementById("fileInput").value = "";
+  document.getElementById("filePreview").classList.remove("show");
+}
+
+// Drag & drop
+const dz = document.getElementById("dropZone");
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("over"); });
+dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+dz.addEventListener("drop", e => {
+  e.preventDefault(); dz.classList.remove("over");
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById("fileInput").files = e.dataTransfer.files; onFileChosen(document.getElementById("fileInput")); }
+});
+
+function doConvert() {
+  if (!chosenFile) { showResult("⚠️ اختر ملفاً أولاً", true); return; }
+  document.getElementById("convertBtn").disabled = true;
+  document.getElementById("spin").classList.add("show");
+  // Send metadata to bot — actual file comes from Telegram file system
+  tg.sendData(JSON.stringify({
+    action:"convert", target:targetFmt, filename:chosenFile.name
+  }));
+  setTimeout(() => {
+    document.getElementById("spin").classList.remove("show");
+    showResult("✅ تم إرسال الطلب! أرسل الملف مباشرة في المحادثة ثم أرسل الصيغة المطلوبة.");
+    document.getElementById("convertBtn").disabled = false;
+    setTimeout(() => tg.close(), 2500);
+  }, 1200);
+}
+
+function showResult(msg, err=false) {
+  const r = document.getElementById("result");
+  r.textContent = msg;
+  r.className = "result show" + (err?" error":"");
+}
+</script>
+</body>
+</html>
