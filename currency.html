@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>محوّل العملات</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --bg:#0d1b2a;--panel:#132338;--card:#1a2f45;--accent:#00d4aa;
+  --gold:#f3c623;--text:#e8f4fd;--muted:#7a9bb5;--danger:#e74c3c;
+  --success:#2ecc71;--border:rgba(255,255,255,0.09);--r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;padding:0}
+.app-header{background:linear-gradient(135deg,#0d3b6e,#0a7451);padding:20px 16px 16px;
+  text-align:center;position:relative}
+.app-header h1{font-size:1.4rem;font-weight:700}
+.app-header p{font-size:.8rem;opacity:.75;margin-top:3px}
+.tg-badge{background:rgba(255,255,255,.15);border-radius:20px;padding:2px 10px;
+  font-size:.7rem;position:absolute;top:12px;left:12px}
+.tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--border)}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:.82rem;font-weight:700;
+  cursor:pointer;opacity:.5;border-bottom:3px solid transparent;transition:all .25s}
+.tab.active{opacity:1;border-bottom-color:var(--accent);color:var(--accent)}
+.tab-content{display:none;padding:14px}
+.tab-content.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--card);border-radius:var(--r);padding:18px;
+  margin-bottom:14px;border:1px solid var(--border)}
+label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px;color:var(--muted)}
+.input-wrap{position:relative;margin-bottom:14px}
+.input-wrap .flag{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border-radius:50%;object-fit:cover}
+input[type=number],select{width:100%;padding:12px 14px;border:1px solid var(--border);
+  border-radius:10px;background:rgba(255,255,255,.06);color:var(--text);
+  font-family:'Tajawal',sans-serif;font-size:.95rem;transition:border .25s}
+select{padding-right:50px;appearance:none;-webkit-appearance:none}
+input[type=number]:focus,select:focus{outline:none;border-color:var(--accent)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;border:none;border-radius:10px;padding:13px;font-size:1rem;
+  font-weight:700;cursor:pointer;transition:all .25s;font-family:'Tajawal',sans-serif;
+  margin-bottom:10px}
+.btn-primary{background:var(--accent);color:#0d1b2a}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-outline{background:transparent;border:1px solid var(--accent);color:var(--accent)}
+.btn-tg{background:#0088cc;color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.result-box{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.25);
+  border-radius:var(--r);padding:18px;margin:14px 0;text-align:center}
+.result-amount{font-size:1.7rem;font-weight:900;color:var(--accent)}
+.result-rate{font-size:.8rem;color:var(--muted);margin-top:8px;line-height:1.7}
+.hist-item,.fav-item{background:var(--card);border-radius:10px;padding:14px;
+  margin-bottom:10px;border:1px solid var(--border);display:flex;
+  align-items:center;justify-content:space-between;gap:8px}
+.hist-info p{margin:0;font-size:.9rem}
+.hist-info small{color:var(--muted);font-size:.75rem}
+.hist-actions{display:flex;gap:6px}
+.mini-btn{padding:7px 12px;border:none;border-radius:8px;font-size:.8rem;
+  cursor:pointer;font-family:'Tajawal',sans-serif;white-space:nowrap}
+.empty{text-align:center;padding:38px 16px;color:var(--muted)}
+.empty i{font-size:2.5rem;margin-bottom:12px;opacity:.35}
+.spinner{width:36px;height:36px;border:4px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status{position:fixed;top:14px;left:50%;transform:translateX(-50%);
+  padding:10px 22px;border-radius:30px;font-size:.85rem;z-index:999;
+  background:rgba(0,0,0,.85);color:#fff;white-space:nowrap;display:none}
+.status.show{display:block;animation:fadeIn .3s ease}
+.popular-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pair-chip{padding:5px 12px;border-radius:20px;border:1px solid var(--border);
+  font-size:.78rem;cursor:pointer;background:transparent;color:var(--text);
+  font-family:'Tajawal',sans-serif;transition:all .2s}
+.pair-chip:hover,.pair-chip.sel{background:var(--accent);color:#0d1b2a;border-color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<script>
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();try{tg.setHeaderColor('#0d3b6e')}catch(e){}}
+</script>
+
+<div class="app-header">
+  <span class="tg-badge">🤖 Mini App</span>
+  <h1><i class="fas fa-coins"></i> محوّل العملات</h1>
+  <p>أسعار صرف محدّثة • تاريخ • مفضلة</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('converter',this)"><i class="fas fa-calculator"></i> المحوّل</div>
+  <div class="tab" onclick="switchTab('history',this)"><i class="fas fa-history"></i> السجل</div>
+  <div class="tab" onclick="switchTab('favorites',this)"><i class="fas fa-star"></i> المفضلة</div>
+</div>
+
+<!-- CONVERTER -->
+<div id="converter" class="tab-content active">
+  <div class="card">
+    <div style="margin-bottom:10px">
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:8px">أزواج شائعة:</div>
+      <div class="popular-grid">
+        <button class="pair-chip" onclick="setQuick('USD','EGP')">USD→EGP</button>
+        <button class="pair-chip" onclick="setQuick('USD','SAR')">USD→SAR</button>
+        <button class="pair-chip" onclick="setQuick('EUR','USD')">EUR→USD</button>
+        <button class="pair-chip" onclick="setQuick('GBP','EGP')">GBP→EGP</button>
+        <button class="pair-chip" onclick="setQuick('USD','AED')">USD→AED</button>
+        <button class="pair-chip" onclick="setQuick('SAR','EGP')">SAR→EGP</button>
+      </div>
+    </div>
+    <div class="input-wrap">
+      <label>المبلغ</label>
+      <input type="number" id="amount" value="1" min="0" step="0.01" placeholder="أدخل المبلغ">
+    </div>
+    <div class="input-wrap">
+      <label>من عملة</label>
+      <img id="from-flag" class="flag" src="" alt="">
+      <select id="from"></select>
+    </div>
+    <button class="btn btn-outline" onclick="swap()" style="margin-bottom:10px">
+      <i class="fas fa-exchange-alt"></i> تبديل العملتين
+    </button>
+    <div class="input-wrap">
+      <label>إلى عملة</label>
+      <img id="to-flag" class="flag" src="" alt="">
+      <select id="to"></select>
+    </div>
+    <button class="btn btn-primary" onclick="convert()">
+      <i class="fas fa-calculator"></i> تحويل الآن
+    </button>
+    <div id="result-area" style="display:none">
+      <div class="result-box">
+        <div class="result-amount" id="res-amount">—</div>
+        <div class="result-rate" id="res-rate"></div>
+      </div>
+      <button class="btn btn-tg" onclick="sendToBot()">
+        <i class="fas fa-paper-plane"></i> إرسال النتيجة للبوت
+      </button>
+      <button class="btn btn-outline" onclick="addFav()" style="margin-top:4px">
+        <i class="fas fa-star"></i> إضافة للمفضلة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="history" class="tab-content">
+  <div class="card">
+    <div id="hist-list"></div>
+    <button class="btn btn-danger" onclick="clearHist()">
+      <i class="fas fa-trash"></i> مسح السجل
+    </button>
+  </div>
+</div>
+
+<!-- FAVORITES -->
+<div id="favorites" class="tab-content">
+  <div class="card">
+    <div id="fav-list"></div>
+  </div>
+</div>
+
+<div class="status" id="status-bar"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────
+const API_KEYS=['48540d52c2d16d7bcc156ab7','49d3c6fabccf46019482fe3e','b90245e30a07d0cbdbb3369c','7547a4dcd5fd5a9bf7429e4e'];
+const FLAG_MAP={USD:'us',EUR:'eu',GBP:'gb',EGP:'eg',SAR:'sa',AED:'ae',KWD:'kw',QAR:'qa',OMR:'om',BHD:'bh',JOD:'jo',JPY:'jp',CAD:'ca',AUD:'au',CHF:'ch',CNY:'cn',INR:'in',RUB:'ru',TRY:'tr',MYR:'my'};
+const NAMES_AR={USD:'دولار أمريكي',EUR:'يورو',GBP:'جنيه إسترليني',EGP:'جنيه مصري',SAR:'ريال سعودي',AED:'درهم إماراتي',KWD:'دينار كويتي',QAR:'ريال قطري',OMR:'ريال عماني',BHD:'دينار بحريني',JOD:'دينار أردني',JPY:'ين ياباني',CAD:'دولار كندي',AUD:'دولار أسترالي',CHF:'فرنك سويسري',CNY:'يوان صيني',INR:'روبية هندية',RUB:'روبل روسي',TRY:'ليرة تركية',MAD:'درهم مغربي',DZD:'دينار جزائري',TND:'دينار تونسي',LYD:'دينار ليبي',SDG:'جنيه سوداني',IQD:'دينار عراقي',SYP:'ليرة سورية',LBP:'ليرة لبنانية',YER:'ريال يمني',MYR:'رينغيت ماليزي',SGD:'دولار سنغافوري',KRW:'وون كوري',SEK:'كرونة سويدية',NOK:'كرونة نرويجية',DKK:'كرونة دنماركية',PLN:'زلوتي بولندي',CZK:'كورونة تشيكية',HUF:'فورنت مجري',RON:'ليو روماني',BGN:'ليف بلغاري',HRK:'كونا كرواتية',BRL:'ريال برازيلي',MXN:'بيزو مكسيكي',ARS:'بيزو أرجنتيني',ZAR:'راند جنوب أفريقي',NGN:'نيرة نيجيرية',KES:'شلن كيني',GHS:'سيدي غاني'};
+const POPULAR=['USD','EUR','GBP','EGP','SAR','AED','KWD','QAR','JPY','CAD','AUD','CHF','INR','TRY','MAD','DZD','IQD'];
+
+let rates={},lastUpdate=null,keyIndex=0;
+let hist=JSON.parse(localStorage.getItem('cx_hist')||'[]');
+let favs=JSON.parse(localStorage.getItem('cx_favs')||'[]');
+let lastResult=null;
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function init(){
+  const cached=localStorage.getItem('cx_rates');
+  const cachedTime=localStorage.getItem('cx_time');
+  if(cached&&cachedTime&&Date.now()-cachedTime<12*3600000){
+    rates=JSON.parse(cached);lastUpdate=new Date(+cachedTime);
+    buildSelects();renderHist();renderFavs();
+  } else {
+    await fetchRates();
+  }
+}
+
+async function fetchRates(){
+  document.getElementById('result-area').style.display='none';
+  showStatus('⏳ جاري تحديث الأسعار...',false);
+  for(let i=0;i<API_KEYS.length;i++){
+    try{
+      const r=await fetch(`https://v6.exchangerate-api.com/v6/${API_KEYS[(keyIndex+i)%API_KEYS.length]}/latest/USD`);
+      const d=await r.json();
+      if(d.result==='success'){
+        rates=d.conversion_rates;lastUpdate=new Date();
+        localStorage.setItem('cx_rates',JSON.stringify(rates));
+        localStorage.setItem('cx_time',Date.now());
+        buildSelects();renderHist();renderFavs();
+        showStatus('✅ تم تحديث الأسعار',true);return;
+      }
+    }catch(e){}
+  }
+  showStatus('⚠️ فشل التحميل — يتم استخدام بيانات محفوظة',false);
+  if(Object.keys(rates).length)buildSelects();
+}
+
+function buildSelects(){
+  const from=document.getElementById('from');
+  const to=document.getElementById('to');
+  const prevF=from.value||'USD';const prevT=to.value||'EGP';
+  [from,to].forEach(sel=>{
+    sel.innerHTML='';
+    // Popular group
+    const pg=document.createElement('optgroup');pg.label='شائعة';
+    POPULAR.filter(c=>rates[c]).forEach(c=>pg.appendChild(mkOpt(c)));
+    sel.appendChild(pg);
+    // All
+    const ag=document.createElement('optgroup');ag.label='كل العملات';
+    Object.keys(rates).filter(c=>!POPULAR.includes(c)).sort().forEach(c=>ag.appendChild(mkOpt(c)));
+    sel.appendChild(ag);
+  });
+  from.value=prevF;to.value=prevT;
+  updateFlag();
+}
+
+function mkOpt(c){
+  const o=document.createElement('option');o.value=c;
+  o.textContent=`${c}  ${NAMES_AR[c]||c}`;return o;
+}
+
+function updateFlag(){
+  const f=document.getElementById('from').value;
+  const t=document.getElementById('to').value;
+  const flag=c=>`https://flagcdn.com/w40/${FLAG_MAP[c]||c.slice(0,2).toLowerCase()}.png`;
+  const fi=document.getElementById('from-flag');fi.src=flag(f);fi.onerror=()=>fi.style.display='none';fi.onload=()=>fi.style.display='';
+  const ti=document.getElementById('to-flag');ti.src=flag(t);ti.onerror=()=>ti.style.display='none';ti.onload=()=>ti.style.display='';
+}
+
+document.getElementById('from').addEventListener('change',updateFlag);
+document.getElementById('to').addEventListener('change',updateFlag);
+
+// ── Convert ───────────────────────────────────────────────────────────────
+function convert(){
+  const amt=parseFloat(document.getElementById('amount').value);
+  const f=document.getElementById('from').value;
+  const t=document.getElementById('to').value;
+  if(!amt||amt<=0){showStatus('أدخل مبلغاً صحيحاً',false);return;}
+  if(!rates[f]||!rates[t]){showStatus('بيانات الصرف غير متاحة',false);return;}
+  const res=(amt/rates[f])*rates[t];
+  const rate=rates[t]/rates[f];
+  const fn=NAMES_AR[f]||f,tn=NAMES_AR[t]||t;
+  document.getElementById('res-amount').textContent=`${res.toLocaleString('ar',{minimumFractionDigits:2,maximumFractionDigits:4})} ${t}`;
+  document.getElementById('res-rate').innerHTML=`${amt.toLocaleString()} ${fn} = ${res.toLocaleString('ar',{maximumFractionDigits:2})} ${tn}<br>1 ${f} = ${rate.toFixed(4)} ${t} • 1 ${t} = ${(1/rate).toFixed(4)} ${f}<br><small>آخر تحديث: ${lastUpdate?lastUpdate.toLocaleString('ar-EG'):'—'}</small>`;
+  document.getElementById('result-area').style.display='block';
+  lastResult={amt,f,t,res,rate,fn,tn};
+  // Save to history
+  hist.unshift({amt,f,t,res,fn,tn,date:new Date().toISOString()});
+  if(hist.length>50)hist.pop();
+  localStorage.setItem('cx_hist',JSON.stringify(hist));
+  renderHist();
+}
+
+function swap(){
+  const f=document.getElementById('from');
+  const t=document.getElementById('to');
+  [f.value,t.value]=[t.value,f.value];
+  updateFlag();
+  if(lastResult)convert();
+}
+
+function setQuick(f,t){
+  document.getElementById('from').value=f;
+  document.getElementById('to').value=t;
+  updateFlag();convert();
+}
+
+// ── History ───────────────────────────────────────────────────────────────
+function renderHist(){
+  const el=document.getElementById('hist-list');
+  if(!hist.length){el.innerHTML='<div class="empty"><i class="fas fa-history"></i><p>لا يوجد سجل بعد</p></div>';return;}
+  el.innerHTML=hist.map((h,i)=>`
+    <div class="hist-item">
+      <div class="hist-info">
+        <p><b>${h.amt} ${h.fn||h.f}</b> = <b style="color:var(--accent)">${h.res.toFixed(2)} ${h.tn||h.t}</b></p>
+        <small>${new Date(h.date).toLocaleString('ar-EG')}</small>
+      </div>
+      <div class="hist-actions">
+        <button class="mini-btn" style="background:var(--accent);color:#0d1b2a" onclick="repeatH(${i})">↻</button>
+      </div>
+    </div>`).join('');
+}
+
+function clearHist(){if(!hist.length)return;hist=[];localStorage.removeItem('cx_hist');renderHist();showStatus('تم مسح السجل',true);}
+
+function repeatH(i){
+  const h=hist[i];
+  document.getElementById('from').value=h.f;
+  document.getElementById('to').value=h.t;
+  document.getElementById('amount').value=h.amt;
+  switchTab('converter',document.querySelector('.tab'));
+  updateFlag();setTimeout(convert,80);
+}
+
+// ── Favorites ──────────────────────────────────────────────────────────────
+function addFav(){
+  if(!lastResult)return;
+  const{f,t,fn,tn}=lastResult;
+  if(favs.some(x=>(x.f===f&&x.t===t)||(x.f===t&&x.t===f))){showStatus('هذا الزوج موجود في المفضلة',false);return;}
+  favs.push({f,t,name:`${fn} ↔ ${tn}`});
+  localStorage.setItem('cx_favs',JSON.stringify(favs));
+  renderFavs();showStatus('✅ تم الحفظ في المفضلة',true);
+}
+
+function renderFavs(){
+  const el=document.getElementById('fav-list');
+  if(!favs.length){el.innerHTML='<div class="empty"><i class="fas fa-star"></i><p>لا توجد مفضلة</p></div>';return;}
+  el.innerHTML=favs.map((x,i)=>`
+    <div class="fav-item">
+      <div class="hist-info"><p><b>${x.name}</b></p></div>
+      <div class="hist-actions">
+        <button class="mini-btn" style="background:var(--accent);color:#0d1b2a" onclick="useFav(${i})">استخدم</button>
+        <button class="mini-btn" style="background:var(--danger);color:#fff" onclick="delFav(${i})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function useFav(i){
+  document.getElementById('from').value=favs[i].f;
+  document.getElementById('to').value=favs[i].t;
+  switchTab('converter',document.querySelector('.tab'));
+  updateFlag();setTimeout(convert,80);
+}
+function delFav(i){favs.splice(i,1);localStorage.setItem('cx_favs',JSON.stringify(favs));renderFavs();}
+
+// ── Send to Telegram Bot ──────────────────────────────────────────────────
+function sendToBot(){
+  if(!lastResult){showStatus('أجر تحويلاً أولاً',false);return;}
+  const{amt,f,t,res,rate,fn,tn}=lastResult;
+  if(tg&&tg.sendData){
+    tg.sendData(JSON.stringify({action:'currency',from:f,to:t,amount:amt,result:res,rate,fromName:fn,toName:tn}));
+  } else {
+    showStatus('افتح التطبيق من تيليجرام للإرسال',false);
+  }
+}
+
+// ── Tabs & UI ─────────────────────────────────────────────────────────────
+function switchTab(id,el){
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+function showStatus(msg,ok=true){
+  const s=document.getElementById('status-bar');
+  s.textContent=msg;s.classList.add('show');
+  s.style.background=ok?'rgba(0,180,120,.9)':'rgba(180,40,40,.9)';
+  setTimeout(()=>s.classList.remove('show'),3000);
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

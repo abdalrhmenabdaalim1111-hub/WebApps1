@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>حاسبة العمر المتطورة</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --primary:#0c1a3e;--secondary:#1a2a6c;--accent:#f3c623;
+  --text:#f0f0f0;--card:rgba(255,255,255,0.08);--hover:rgba(255,255,255,0.14);
+  --success:#2ecc71;--danger:#e74c3c;--info:#3498db;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,var(--primary),var(--secondary));
+  color:var(--text);min-height:100vh;padding:12px;overflow-x:hidden}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.logo{display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700}
+.logo i{color:var(--accent);font-size:1.4rem}
+.tg-badge{background:rgba(0,136,204,0.3);border:1px solid #0088cc;
+  border-radius:20px;padding:4px 12px;font-size:0.75rem;color:#7ec8e3}
+.card{background:var(--card);backdrop-filter:blur(12px);border-radius:18px;
+  padding:18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+.screen{display:none;animation:fadeIn .35s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.home-item{background:var(--card);border-radius:14px;padding:18px 10px;
+  text-align:center;cursor:pointer;transition:all .3s;border:1px solid rgba(255,255,255,0.06)}
+.home-item:hover,.home-item:active{background:var(--hover);transform:scale(1.04)}
+.home-item .icon{font-size:2rem;color:var(--accent);margin-bottom:8px}
+.home-item .title{font-size:.9rem;font-weight:700}
+.home-item .desc{font-size:.72rem;opacity:.7;margin-top:3px}
+.page-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.back-btn{background:rgba(255,255,255,0.15);border:none;color:#fff;
+  width:38px;height:38px;border-radius:50%;font-size:1rem;cursor:pointer}
+.page-title{font-size:1.25rem;font-weight:700;background:linear-gradient(90deg,var(--accent),#fff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1;text-align:center}
+.date-row{display:flex;gap:8px;margin:12px 0}
+.date-row select{flex:1;padding:10px 6px;border:none;border-radius:10px;
+  background:rgba(255,255,255,0.18);color:#fff;font-family:'Tajawal',sans-serif;
+  font-size:.9rem;text-align:center;-webkit-appearance:none;appearance:none}
+.date-row select:focus{outline:none;background:rgba(255,255,255,0.26)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:none;border-radius:12px;padding:12px 20px;font-size:1rem;font-weight:700;
+  cursor:pointer;transition:all .3s;width:100%;margin-top:10px;font-family:'Tajawal',sans-serif}
+.btn-primary{background:var(--accent);color:#222}
+.btn-primary:hover{background:#fdd835}
+.btn-tg{background:#0088cc;color:#fff}
+.btn-tg:hover{background:#006fa4}
+.btn-danger{background:var(--danger);color:#fff}
+.result-box{background:rgba(0,0,0,0.18);border-radius:14px;padding:16px;margin-top:14px}
+.result-row{display:flex;justify-content:space-between;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,0.08);font-size:.92rem}
+.result-row:last-child{border-bottom:none}
+.result-label{color:rgba(255,255,255,.75)}
+.result-value{font-weight:700;color:var(--accent)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:12px}
+.stat-card{background:var(--card);border-radius:12px;padding:14px;text-align:center}
+.stat-icon{font-size:1.6rem;color:var(--accent);margin-bottom:6px}
+.stat-val{font-size:1.3rem;font-weight:900;margin-bottom:3px}
+.stat-lbl{font-size:.75rem;opacity:.75}
+.people-container{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+.person-card{background:rgba(255,255,255,0.08);border-radius:14px;padding:16px}
+.person-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.person-num{background:var(--accent);color:#333;width:28px;height:28px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+.remove-btn{background:rgba(231,76,60,.2);border:none;border-radius:50%;
+  width:28px;height:28px;color:var(--danger);cursor:pointer;font-size:.85rem}
+input[type=text],input[type=number]{width:100%;padding:10px;border:none;border-radius:10px;
+  background:rgba(255,255,255,.18);color:#fff;font-family:'Tajawal',sans-serif;
+  font-size:.92rem;text-align:center;margin-bottom:8px}
+input::placeholder{color:rgba(255,255,255,.55)}
+input:focus{outline:none;background:rgba(255,255,255,.26)}
+.tab-bar{display:flex;gap:4px;margin-bottom:14px;background:rgba(0,0,0,.2);
+  border-radius:12px;padding:4px}
+.tab{flex:1;text-align:center;padding:8px 4px;cursor:pointer;border-radius:8px;
+  font-size:.8rem;font-weight:600;transition:all .3s;opacity:.6}
+.tab.active{background:var(--accent);color:#222;opacity:1}
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fadeIn .3s ease}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th,td{padding:8px 4px;text-align:center;border-bottom:1px solid rgba(255,255,255,.1)}
+th{background:rgba(255,255,255,.1);font-weight:700}
+.timeline{padding-right:24px;border-right:3px solid rgba(255,255,255,.2);margin-top:14px}
+.tl-item{position:relative;margin-bottom:18px;padding-right:18px}
+.tl-item::before{content:'';position:absolute;right:-13px;top:4px;
+  width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--primary)}
+.tl-year{font-weight:700;font-size:.95rem}
+.tl-title{font-weight:600;font-size:.88rem;margin:2px 0}
+.tl-desc{font-size:.78rem;opacity:.72}
+.filter-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{padding:6px 14px;border-radius:20px;border:none;background:rgba(255,255,255,.12);
+  color:#fff;cursor:pointer;font-size:.82rem;font-family:'Tajawal',sans-serif}
+.pill.active{background:var(--accent);color:#222;font-weight:700}
+.notif{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.85);color:#fff;padding:10px 22px;border-radius:30px;
+  font-size:.88rem;display:none;z-index:999;white-space:nowrap}
+.notif.show{display:block;animation:fadeIn .4s ease}
+.gen-card{background:rgba(255,255,255,.08);border-radius:14px;padding:18px;text-align:center}
+.gen-icon{font-size:2.4rem;margin-bottom:10px}
+.gen-name{font-size:1.1rem;font-weight:700}
+.gen-years{font-size:.88rem;opacity:.75;margin:6px 0}
+.gen-desc{font-size:.82rem;opacity:.65}
+.gen-traits{text-align:right;margin-top:14px}
+.gen-traits li{font-size:.85rem;padding:4px 0;list-style:none}
+.gen-traits li::before{content:'✅ ';margin-left:4px}
+.progress-item{margin-bottom:14px}
+.progress-label{display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:5px;font-weight:600}
+.progress-bar{height:12px;background:rgba(255,255,255,.1);border-radius:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:8px;transition:width 1s ease}
+.country-card{background:rgba(255,255,255,.08);border-radius:12px;padding:14px;
+  display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.country-flag{width:38px;height:38px;border-radius:50%;object-fit:cover}
+</style>
+</head>
+<body>
+<script>
+const tg = window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();try{tg.setHeaderColor('#0c1a3e')}catch(e){}}
+</script>
+
+<div class="header">
+  <div class="logo"><i class="fas fa-hourglass-half"></i> حاسبة العمر</div>
+  <span class="tg-badge">🤖 Telegram Mini App</span>
+</div>
+
+<!-- HOME -->
+<div id="home" class="screen card active">
+  <div style="text-align:center;margin-bottom:18px">
+    <div style="font-size:2rem;color:var(--accent)">⏳</div>
+    <div style="font-size:1.2rem;font-weight:700;margin:6px 0">مقارنات العمر المتقدمة</div>
+    <div style="font-size:.82rem;opacity:.7">اختر نوع التحليل</div>
+  </div>
+  <div class="home-grid">
+    <div class="home-item" onclick="show('detailed')">
+      <div class="icon">🧮</div><div class="title">حاسبة العمر</div><div class="desc">تفاصيل دقيقة</div>
+    </div>
+    <div class="home-item" onclick="show('compare')">
+      <div class="icon">👥</div><div class="title">مقارنة الأعمار</div><div class="desc">قارن أشخاص</div>
+    </div>
+    <div class="home-item" onclick="show('generation')">
+      <div class="icon">🏛️</div><div class="title">الأجيال</div><div class="desc">اكتشف جيلك</div>
+    </div>
+    <div class="home-item" onclick="show('historical')">
+      <div class="icon">📜</div><div class="title">تاريخية</div><div class="desc">قارن مع التاريخ</div>
+    </div>
+    <div class="home-item" onclick="show('global')">
+      <div class="icon">🌍</div><div class="title">عالمية</div><div class="desc">قارن مع العالم</div>
+    </div>
+    <div class="home-item" onclick="show('time')">
+      <div class="icon">⏱️</div><div class="title">زمنية</div><div class="desc">أرقام حياتك</div>
+    </div>
+    <div class="home-item" onclick="show('physical')">
+      <div class="icon">💪</div><div class="title">جسدية</div><div class="desc">طول وزن BMI</div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAILED AGE -->
+<div id="detailed" class="screen">
+  <div class="card">
+    <div class="page-header">
+      <button class="back-btn" onclick="show('home')"><i class="fas fa-arrow-right"></i></button>
+      <div class="page-title">حاسبة العمر المفصلة</div>
+    </div>
+    <div style="color:rgba(255,255,255,.7);font-size:.85rem;margin-bottom:8px">تاريخ ميلادك:</div>
+    <div class="date-row" id="det-date">
+      <select class="day-sel"><option value="">اليوم</option></select>
+      <select class="month-sel"><option value="">الشهر</option></select>
+      <select class="year-sel"><option value="">السنة</option></select>
+    </div>
+    <button class="btn btn-primary" onclick="calcDetailed()"><i class="fas fa-calculator"></i> احسب عمري</button>
+    <div id="det-result"></div>
+  </div>
+</div>
+
+<!-- COMPARE -->
+<div id="compare" class="screen">
+  <div class="card">
+    <div class="page-header">
+      <button class="back-btn" onclick="show('home')"><i class="fas fa-arrow-right"></i></button>
+      <div class="page-title">مقارنة الأعمار</div>
+    </div>
+    <div class="people-container" id="ppl-con">
+      <div class="person-card">
+        <div class="person-header"><div class="person-num">1</div><button class="remove-btn" onclick="removePerson(this)" style="display:none">✕</button></div>
+        <input type="text" placeholder="الاسم" class="pname"><div class="date-row"><select class="day-sel"><option value="">اليوم</option></select><select class="month-sel"><option value="">الشهر</option></select><select class="year-sel"><option value="">السنة</option></select></div>
+      </div>
+      <div class="person-card">
+        <div class="person-header"><div class="person-num">2</div><button class="remove-btn" onclick="removePerson(this)" style="display:none">✕</button></div>
+        <input type="text" placeholder="الاسم" class="pname"><div class="date-row"><select class="day-sel"><option value="">اليوم</option></select><select class="month-sel"><option value="">الشهر</option></select><select class="year-sel"><option value="">السنة</option></select></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="margin-top:0" onclick="addPerson()">+ شخص</button>
+      <button class="btn btn-tg" style="margin-top:0" onclick="compareAll()"><i class="fas fa-calculator"></i> قارن</button>
+    </div>
+    <div id="cmp-result"></div>
+  </div>
+</div>
+
+<!-- GENERATION -->
+<div id="generation" class="screen">
+  <div class="card">
+    <div class="page-header">
+      <button class="back-btn" onclick="show('home')"><i class="fas fa-arrow-right"></i></button>
+      <div class="page-title">مقارنة الأجيال</div>
+    </div>
+    <div class="date-row" id="gen-date">
+      <select class="day-sel"><option value="">اليوم</option></select>
+      <select class="month-sel"><option value="">الشهر</option></select>
+      <select class="year-sel"><option value="">السنة</option></select>
+    </div>
+    <button class="btn btn-primary" onclick="analyzeGen()"><i class="fas fa-search"></i> تحليل الجيل</button>
+    <div id="gen-result"></div>
+  </div>
+</div>
+
+<!-- HISTORICAL -->
+<div id="historical" class="screen">
+  <div class="card">
+    <div class="page-header">
+      <button class="back-btn" onclick="show('home')"><i class="fas fa-arrow-right"></i></button>
+      <div class="page-title">مقارنة تاريخية</div>
+    </div>
+    <input type="number" id="hist-year" placeholder="سنة ميلادك (مثال: 1995)" maxlength="4" style="margin-bottom:12px">
+    <div class="filter-pills">
+      <button class="pill active" onclick="setPeriod(this,'ancient')">قديمة</button>
+      <button class="pill" onclick="setPeriod(this,'medieval')">وسطى</button>
+      <button class="pill" onclick="setPeriod(this,'modern')">حديثة</button>
+      <button class="pill" onclick="setPeriod(this,'contemporary')">معاصرة</button>
+    </div>
+    <button class="btn btn-primary" onclick="compareHistorical()"><i class="fas fa-landmark"></i> قارن مع التاريخ</button>
+    <div id="hist-result"></div>
+  </div>
+</div>
+
+<!-- GLOBAL -->
+<div id="global" class="screen">
+  <div class="card">
+    <div class="page-header">
+      <button class="back-btn" onclick="show('home')"><i class="fas fa-arrow-right"></i></button>
+      <div class="page-title">مقارنة عالمية</div>
+    </div>
+    <input type="number" id="glob-year" placeholder="سنة الميلاد" style="margin-bottom:8px">
+    <select id="country-sel" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-family:'Tajawal',sans-serif;margin-bottom:12px;appearance:none">
+      <option value="">اختر بلدك</option>
+      <option value="sa">السعودية</option><option value="eg">مصر</option><option value="ae">الإمارات</option>
+      <option value="jo">الأردن</option><option value="kw">الكويت</option><option value="qa">قطر</option>
+      <option value="bh">البحرين</option><option value="om">عمان</option><option value="iq">العراق</option>
+      <option value="sy">سوريا</option><option value="lb">لبنان</option><option value="ma">المغرب</option>
+      <option value="tn">تونس</option><option value="dz">الجزائر</option><option value="ly">ليبيا</option>
+      <option value="sd">السودان</option><option value="ye">اليمن</option><option value="us">الولايات المتحدة</option>
+      <option value="uk">المملكة المتحدة</option><option value="fr">فرنسا</option><option value="de">ألمانيا</option>
+      <option value="jp">اليابان</option><option value="cn">الصين</option><option value="in">الهند</option>
+    </select>
+    <button class="btn btn-primary" onclick="compareGlobal()"><i class="fas fa-globe"></i> قارن عالمياً</button>
+    <div id="glob-result"></div>
+  </div>
+</div>
+
+<!-- TIME -->
+<div id="time" class="screen">
+  <div class="card">
+    <div class="page-header">
+      <button class="back-btn" onclick="show('home')"><i class="fas fa-arrow-right"></i></button>
+      <div class="page-title">مقارنة زمنية</div>
+    </div>
+    <input type="number" id="time-year" placeholder="سنة ميلادك" style="margin-bottom:12px">
+    <button class="btn btn-primary" onclick="calcTime()"><i class="fas fa-hourglass"></i> احسب أرقام حياتك</button>
+    <div id="time-result"></div>
+  </div>
+</div>
+
+<!-- PHYSICAL -->
+<div id="physical" class="screen">
+  <div class="card">
+    <div class="page-header">
+      <button class="back-btn" onclick="show('home')"><i class="fas fa-arrow-right"></i></button>
+      <div class="page-title">مقارنة جسدية</div>
+    </div>
+    <div class="people-container" id="phy-con">
+      <div class="person-card">
+        <div class="person-header"><div class="person-num">1</div><button class="remove-btn" onclick="removePhy(this)" style="display:none">✕</button></div>
+        <input class="pname" type="text" placeholder="الاسم">
+        <input class="pheight" type="number" placeholder="الطول (سم)">
+        <input class="pweight" type="number" placeholder="الوزن (كجم)">
+      </div>
+      <div class="person-card">
+        <div class="person-header"><div class="person-num">2</div><button class="remove-btn" onclick="removePhy(this)" style="display:none">✕</button></div>
+        <input class="pname" type="text" placeholder="الاسم">
+        <input class="pheight" type="number" placeholder="الطول (سم)">
+        <input class="pweight" type="number" placeholder="الوزن (كجم)">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="margin-top:0" onclick="addPhy()">+ شخص</button>
+      <button class="btn btn-tg" style="margin-top:0" onclick="comparePhy()">قارن</button>
+    </div>
+    <div id="phy-result"></div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────
+const GENS=[
+  {name:'الجيل Z',years:'1997-2012',icon:'👶',start:1997,end:2012,traits:['محب للتكنولوجيا','يفضل العمل المرن','مهتم بالقضايا البيئية','يتعلم بسرعة']},
+  {name:'الجيل Y (الألفية)',years:'1981-1996',icon:'👨‍💼',start:1981,end:1996,traits:['متعدد المهارات','يقدر التوازن','مهتم بالتطور','نشط على السوشيال ميديا']},
+  {name:'الجيل X',years:'1965-1980',icon:'👔',start:1965,end:1980,traits:['مستقل ومسؤول','يتكيف جيداً','يقدر الخصوصية','عملي وواقعي']},
+  {name:'جيل الطفرة',years:'1946-1964',icon:'📺',start:1946,end:1964,traits:['مخلص في العمل','يقدر الإنجاز','متفائل','يهتم بالاستقرار']},
+  {name:'الجيل الصامت',years:'1928-1945',icon:'🎖️',start:1928,end:1945,traits:['صبور ومثابر','منضبط','محافظ','يضحي للآخرين']}
+];
+const HIST={
+  ancient:[{y:-3100,t:'بناء الأهرامات',d:'بدء بناء أهرامات الجيزة'},{y:-776,t:'الأولمبياد الأول',d:'أول ألعاب أولمبية'},{y:-323,t:'وفاة الإسكندر الأكبر',d:'نهاية إمبراطوريته'}],
+  medieval:[{y:570,t:'ولادة النبي محمد ﷺ',d:'أشرف مولود'},{y:622,t:'الهجرة النبوية',d:'من مكة إلى المدينة'},{y:1066,t:'معركة هاستينغز',d:'غزو النورمان لإنجلترا'}],
+  modern:[{y:1492,t:'اكتشاف أمريكا',d:'كولومبوس يكتشف العالم الجديد'},{y:1776,t:'استقلال أمريكا',d:'إعلان الاستقلال'},{y:1789,t:'الثورة الفرنسية',d:'ثورة غيّرت العالم'}],
+  contemporary:[{y:1914,t:'الحرب العالمية الأولى',d:'بداية الحرب'},{y:1969,t:'هبوط القمر',d:'أرمسترونغ على القمر'},{y:2001,t:'11 سبتمبر',d:'هجمات إرهابية'}]
+};
+const COUNTRIES={
+  sa:{name:'السعودية',le:75,h:168,w:74},eg:{name:'مصر',le:72,h:166,w:73},
+  ae:{name:'الإمارات',le:78,h:170,w:75},kw:{name:'الكويت',le:77,h:169,w:76},
+  qa:{name:'قطر',le:78,h:171,w:77},jo:{name:'الأردن',le:74,h:167,w:72},
+  bh:{name:'البحرين',le:77,h:165,w:71},om:{name:'عمان',le:76,h:166,w:72},
+  iq:{name:'العراق',le:70,h:165,w:70},sy:{name:'سوريا',le:72,h:165,w:70},
+  lb:{name:'لبنان',le:79,h:167,w:73},ma:{name:'المغرب',le:74,h:166,w:71},
+  tn:{name:'تونس',le:76,h:167,w:72},dz:{name:'الجزائر',le:75,h:167,w:72},
+  ly:{name:'ليبيا',le:72,h:166,w:71},sd:{name:'السودان',le:65,h:166,w:68},
+  ye:{name:'اليمن',le:66,h:159,w:60},us:{name:'الولايات المتحدة',le:79,h:177,w:81},
+  uk:{name:'المملكة المتحدة',le:81,h:175,w:77},fr:{name:'فرنسا',le:82,h:174,w:73},
+  de:{name:'ألمانيا',le:81,h:175,w:78},jp:{name:'اليابان',le:84,h:171,w:62},
+  cn:{name:'الصين',le:77,h:171,w:66},in:{name:'الهند',le:70,h:165,w:58}
+};
+let pplCount=2,phyCount=2,period='ancient';
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.onload=function(){
+  populateAll();
+};
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function notify(msg){
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'),2800);
+}
+
+// ── Date helpers ──────────────────────────────────────────────────────────
+function populateAll(){
+  document.querySelectorAll('.day-sel').forEach(s=>fillDays(s));
+  document.querySelectorAll('.month-sel').forEach(s=>fillMonths(s));
+  document.querySelectorAll('.year-sel').forEach(s=>fillYears(s));
+}
+function fillDays(sel){if(sel.options.length>1)return;for(let i=1;i<=31;i++)sel.innerHTML+=`<option value="${String(i).padStart(2,'0')}">${i}</option>`;}
+function fillMonths(sel){if(sel.options.length>1)return;const m=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];m.forEach((n,i)=>sel.innerHTML+=`<option value="${String(i+1).padStart(2,'0')}">${n}</option>`);}
+function fillYears(sel){if(sel.options.length>1)return;const y=new Date().getFullYear();for(let i=y;i>=y-100;i--)sel.innerHTML+=`<option value="${i}">${i}</option>`;}
+
+function getDate(container){
+  const d=container.querySelector('.day-sel').value;
+  const m=container.querySelector('.month-sel').value;
+  const y=container.querySelector('.year-sel').value;
+  return (d&&m&&y)?new Date(`${y}-${m}-${d}`):null;
+}
+
+function ageOf(bd){
+  const now=new Date();
+  const ms=now-bd;
+  const days=Math.floor(ms/86400000);
+  const mins=Math.floor(ms/60000);
+  let y=now.getFullYear()-bd.getFullYear();
+  let mo=now.getMonth()-bd.getMonth();
+  let da=now.getDate()-bd.getDate();
+  if(da<0){mo--;da+=new Date(now.getFullYear(),now.getMonth(),0).getDate();}
+  if(mo<0){y--;mo+=12;}
+  return {y,mo,da,days,hours:days*24,mins,ms};
+}
+
+function zodiac(d,m){
+  if((m==1&&d>=20)||(m==2&&d<=18))return'الدلو ♒';
+  if((m==2&&d>=19)||(m==3&&d<=20))return'الحوت ♓';
+  if((m==3&&d>=21)||(m==4&&d<=19))return'الحمل ♈';
+  if((m==4&&d>=20)||(m==5&&d<=20))return'الثور ♉';
+  if((m==5&&d>=21)||(m==6&&d<=20))return'الجوزاء ♊';
+  if((m==6&&d>=21)||(m==7&&d<=22))return'السرطان ♋';
+  if((m==7&&d>=23)||(m==8&&d<=22))return'الأسد ♌';
+  if((m==8&&d>=23)||(m==9&&d<=22))return'العذراء ♍';
+  if((m==9&&d>=23)||(m==10&&d<=22))return'الميزان ♎';
+  if((m==10&&d>=23)||(m==11&&d<=21))return'العقرب ♏';
+  if((m==11&&d>=22)||(m==12&&d<=21))return'القوس ♐';
+  return'الجدي ♑';
+}
+
+// ── Detailed Calculator ───────────────────────────────────────────────────
+function calcDetailed(){
+  const c=document.getElementById('det-date');
+  const bd=getDate(c);
+  if(!bd||bd>new Date()){notify('يرجى إدخال تاريخ ميلاد صحيح');return;}
+  const a=ageOf(bd);
+  const z=zodiac(bd.getDate(),bd.getMonth()+1);
+  let nb=new Date(new Date().getFullYear(),bd.getMonth(),bd.getDate());
+  if(nb<new Date())nb.setFullYear(nb.getFullYear()+1);
+  const dtb=Math.ceil((nb-new Date())/86400000);
+  const meals=a.days*3,sleep=a.days*8,hearts=a.mins*75,breaths=a.mins*16;
+  const html=`
+  <div class="result-box">
+    <div class="result-row"><span class="result-label">⏳ المدة</span><span class="result-value">${a.y} سنة ${a.mo} شهر ${a.da} يوم</span></div>
+    <div class="result-row"><span class="result-label">📅 أشهر</span><span class="result-value">${(a.y*12+a.mo).toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">📆 أيام</span><span class="result-value">${a.days.toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">⏰ ساعات</span><span class="result-value">${a.hours.toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">⌛ دقائق</span><span class="result-value">${a.mins.toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">🍽️ وجبات</span><span class="result-value">~${meals.toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">🛌 ساعات النوم</span><span class="result-value">~${sleep.toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">❤️ نبضات القلب</span><span class="result-value">~${hearts.toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">🌬️ مرات التنفس</span><span class="result-value">~${breaths.toLocaleString()}</span></div>
+    <div class="result-row"><span class="result-label">🔮 برجك</span><span class="result-value">${z}</span></div>
+    <div class="result-row"><span class="result-label">🎉 قادم</span><span class="result-value">${dtb} يوم على عيد ميلادك</span></div>
+  </div>
+  <button class="btn btn-tg" onclick="sendToBot('detailed',{years:${a.y},months:${a.mo},days:${a.da},zodiac:'${z}',daysTotal:${a.days}})">
+    <i class="fas fa-paper-plane"></i> إرسال النتيجة للبوت
+  </button>`;
+  document.getElementById('det-result').innerHTML=html;
+}
+
+// ── Compare ───────────────────────────────────────────────────────────────
+function addPerson(){
+  pplCount++;
+  const c=document.getElementById('ppl-con');
+  const d=document.createElement('div');
+  d.className='person-card';
+  d.innerHTML=`<div class="person-header"><div class="person-num">${pplCount}</div><button class="remove-btn" onclick="removePerson(this)">✕</button></div>
+    <input type="text" placeholder="الاسم" class="pname">
+    <div class="date-row"><select class="day-sel"><option value="">اليوم</option></select><select class="month-sel"><option value="">الشهر</option></select><select class="year-sel"><option value="">السنة</option></select></div>`;
+  c.appendChild(d);
+  fillDays(d.querySelector('.day-sel'));fillMonths(d.querySelector('.month-sel'));fillYears(d.querySelector('.year-sel'));
+  updateRemove('#ppl-con','.remove-btn',pplCount);
+}
+function removePerson(btn){
+  if(pplCount<=2){notify('على الأقل شخصان');return;}
+  btn.closest('.person-card').remove();pplCount--;
+  document.querySelectorAll('#ppl-con .person-num').forEach((n,i)=>n.textContent=i+1);
+}
+function updateRemove(con,cls,count){
+  document.querySelectorAll(con+' '+cls).forEach(b=>b.style.display=count>2?'flex':'none');
+}
+function compareAll(){
+  const cards=document.querySelectorAll('#ppl-con .person-card');
+  const results=[];
+  cards.forEach(c=>{
+    const name=c.querySelector('.pname').value||`شخص ${c.querySelector('.person-num').textContent}`;
+    const bd=getDate(c);
+    if(!bd||bd>new Date()){return;}
+    const a=ageOf(bd);
+    results.push({name,...a,bd});
+  });
+  if(results.length<2){notify('أدخل تاريخ ميلاد كامل لشخصين على الأقل');return;}
+  results.sort((a,b)=>a.bd-b.bd);
+  let rows=results.map(r=>`<tr><td>${r.name}</td><td>${r.y}</td><td>${r.mo}</td><td>${r.da}</td><td>${r.hours.toLocaleString()}</td></tr>`).join('');
+  let diffs='';
+  for(let i=0;i<results.length-1;i++){
+    const diff=Math.abs(results[i].days-results[i+1].days);
+    const dy=Math.floor(diff/365);const dm=Math.floor((diff%365)/30);
+    diffs+=`<div class="result-row"><span class="result-label">${results[i].name} أكبر من ${results[i+1].name}</span><span class="result-value">${dy}سنة ${dm}شهر</span></div>`;
+  }
+  document.getElementById('cmp-result').innerHTML=`
+    <div class="result-box" style="margin-top:14px">
+      <div style="overflow-x:auto"><table><thead><tr><th>الاسم</th><th>سنوات</th><th>أشهر</th><th>أيام</th><th>ساعات</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div style="margin-top:14px;font-weight:700;margin-bottom:8px">الفروق:</div>${diffs}
+    </div>`;
+  notify('تمت المقارنة ✅');
+}
+
+// ── Generation ────────────────────────────────────────────────────────────
+function analyzeGen(){
+  const bd=getDate(document.getElementById('gen-date'));
+  if(!bd){notify('أدخل تاريخ ميلادك كاملاً');return;}
+  const y=bd.getFullYear();
+  const g=GENS.find(g=>y>=g.start&&y<=g.end)||{name:'جيل سابق',years:'قبل 1928',icon:'👴',traits:['خبرة حياتية غنية','حكمة عميقة','شهدت أحداثاً تاريخية']};
+  document.getElementById('gen-result').innerHTML=`
+    <div class="gen-card" style="margin-top:14px">
+      <div class="gen-icon">${g.icon}</div>
+      <div class="gen-name">${g.name}</div>
+      <div class="gen-years">${g.years}</div>
+      <ul class="gen-traits">${g.traits.map(t=>`<li>${t}</li>`).join('')}</ul>
+    </div>`;
+  notify(`أنت من ${g.name} 🎉`);
+}
+
+// ── Historical ────────────────────────────────────────────────────────────
+function setPeriod(btn,p){
+  period=p;
+  document.querySelectorAll('.pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function compareHistorical(){
+  const y=parseInt(document.getElementById('hist-year').value);
+  if(!y||y<1000||y>new Date().getFullYear()){notify('أدخل سنة ميلاد صحيحة');return;}
+  const events=HIST[period];
+  const tl=events.map(e=>{
+    const diff=Math.abs(y-e.y);
+    const rel=y>e.y?`قبل ميلادك بـ ${diff} سنة`:y<e.y?`بعد ميلادك بـ ${diff} سنة`:'في عام ميلادك';
+    return `<div class="tl-item"><div class="tl-year">${e.y>0?e.y:Math.abs(e.y)+' ق.م'}</div><div class="tl-title">${e.t}</div><div class="tl-desc">${e.d}</div><div style="font-size:.75rem;color:var(--accent);margin-top:4px">${rel}</div></div>`;
+  }).join('');
+  document.getElementById('hist-result').innerHTML=`<div class="timeline" style="margin-top:14px">${tl}</div>`;
+  notify('تمت المقارنة التاريخية ✅');
+}
+
+// ── Global ────────────────────────────────────────────────────────────────
+function compareGlobal(){
+  const y=parseInt(document.getElementById('glob-year').value);
+  const cc=document.getElementById('country-sel').value;
+  if(!y||y<1900||y>new Date().getFullYear()){notify('أدخل سنة ميلاد صحيحة');return;}
+  if(!cc){notify('اختر بلدك');return;}
+  const c=COUNTRIES[cc];
+  const age=new Date().getFullYear()-y;
+  const lifeLeft=Math.max(0,c.le-age);
+  document.getElementById('glob-result').innerHTML=`
+    <div class="result-box" style="margin-top:14px">
+      <div class="result-row"><span class="result-label">🌍 بلدك</span><span class="result-value">${c.name}</span></div>
+      <div class="result-row"><span class="result-label">📊 العمر المتوقع</span><span class="result-value">${c.le} سنة</span></div>
+      <div class="result-row"><span class="result-label">⏳ المتبقي (تقريباً)</span><span class="result-value">${lifeLeft} سنة</span></div>
+      <div class="result-row"><span class="result-label">📏 متوسط الطول</span><span class="result-value">${c.h} سم</span></div>
+      <div class="result-row"><span class="result-label">⚖️ متوسط الوزن</span><span class="result-value">${c.w} كجم</span></div>
+      <div class="result-row"><span class="result-label">🌐 متوسط عالمي</span><span class="result-value">72 سنة</span></div>
+    </div>`;
+  notify('تمت المقارنة العالمية ✅');
+}
+
+// ── Time Stats ────────────────────────────────────────────────────────────
+function calcTime(){
+  const y=parseInt(document.getElementById('time-year').value);
+  if(!y||y<1900||y>new Date().getFullYear()){notify('أدخل سنة ميلاد صحيحة');return;}
+  const days=(new Date()-new Date(y,0,1))/86400000|0;
+  const hrs=days*24,mins=hrs*60;
+  const html=`<div class="stats-grid" style="margin-top:14px">
+    <div class="stat-card"><div class="stat-icon">☀️</div><div class="stat-val">${(new Date().getFullYear()-y).toLocaleString()}</div><div class="stat-lbl">دورات الشمس</div></div>
+    <div class="stat-card"><div class="stat-icon">🌙</div><div class="stat-val">${(days/29.53|0).toLocaleString()}</div><div class="stat-lbl">دورات قمرية</div></div>
+    <div class="stat-card"><div class="stat-icon">⏰</div><div class="stat-val">${hrs.toLocaleString()}</div><div class="stat-lbl">ساعات</div></div>
+    <div class="stat-card"><div class="stat-icon">❤️</div><div class="stat-val">${(mins*75).toLocaleString()}</div><div class="stat-lbl">نبضات القلب</div></div>
+    <div class="stat-card"><div class="stat-icon">🍽️</div><div class="stat-val">${(days*3).toLocaleString()}</div><div class="stat-lbl">وجبات</div></div>
+    <div class="stat-card"><div class="stat-icon">💧</div><div class="stat-val">${(days*2).toLocaleString()}</div><div class="stat-lbl">لتر ماء</div></div>
+  </div>`;
+  document.getElementById('time-result').innerHTML=html;
+}
+
+// ── Physical ──────────────────────────────────────────────────────────────
+function addPhy(){
+  phyCount++;
+  const c=document.getElementById('phy-con');
+  const d=document.createElement('div');d.className='person-card';
+  d.innerHTML=`<div class="person-header"><div class="person-num">${phyCount}</div><button class="remove-btn" onclick="removePhy(this)">✕</button></div>
+    <input class="pname" type="text" placeholder="الاسم">
+    <input class="pheight" type="number" placeholder="الطول (سم)">
+    <input class="pweight" type="number" placeholder="الوزن (كجم)">`;
+  c.appendChild(d);
+  updateRemove('#phy-con','.remove-btn',phyCount);
+}
+function removePhy(btn){if(phyCount<=2){notify('على الأقل شخصان');return;}btn.closest('.person-card').remove();phyCount--;}
+function bmiCat(b){
+  if(b<18.5)return{t:'نقص الوزن',c:'#3498db'};
+  if(b<25)return{t:'وزن طبيعي',c:'#2ecc71'};
+  if(b<30)return{t:'زيادة وزن',c:'#f39c12'};
+  return{t:'سمنة',c:'#e74c3c'};
+}
+function comparePhy(){
+  const cards=document.querySelectorAll('#phy-con .person-card');
+  const res=[];
+  cards.forEach(c=>{
+    const name=c.querySelector('.pname').value||'شخص';
+    const h=parseFloat(c.querySelector('.pheight').value);
+    const w=parseFloat(c.querySelector('.pweight').value);
+    if(h&&w){const bmi=w/((h/100)**2);res.push({name,h,w,bmi,cat:bmiCat(bmi)});}
+  });
+  if(res.length<2){notify('أدخل بيانات شخصين على الأقل');return;}
+  const rows=res.map(r=>`<tr><td>${r.name}</td><td>${r.h}</td><td>${r.w}</td><td>${r.bmi.toFixed(1)}</td><td style="color:${r.cat.c}">${r.cat.t}</td></tr>`).join('');
+  document.getElementById('phy-result').innerHTML=`<div class="result-box" style="margin-top:14px"><div style="overflow-x:auto"><table><thead><tr><th>الاسم</th><th>الطول</th><th>الوزن</th><th>BMI</th><th>الفئة</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  notify('تمت المقارنة الجسدية ✅');
+}
+
+// ── Send to Telegram Bot ──────────────────────────────────────────────────
+function sendToBot(type,data){
+  if(tg&&tg.sendData){
+    tg.sendData(JSON.stringify({action:'age_result',type,...data}));
+  } else {
+    notify('افتح التطبيق من داخل تيليجرام لإرسال النتيجة');
+  }
+}
+</script>
+</body>
+</html>
